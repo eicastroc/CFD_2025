@@ -1,7 +1,37 @@
 using LinearAlgebra
 
 """
-Método para resolver para n pasos de tiempo, Δt, dados, el sistema de ecuaciones que describe la aplicación en régimen transitorio: [A][x] = [b], donde [A] es la matriz de coeficientes, [x] es un vector que contiene las temperaturas en los volúmenes de control, y [b] es el vector constante al lado derecho de la ecuacion.
+heatTransient()
+
+Método para resolver para n pasos de tiempo, Δt, dados, 
+el sistema de ecuaciones que describe la aplicación en régimen transitorio: 
+	
+		[A][x] = [b], 
+donde
+	[A] es la matriz de coeficientes, 
+	[x] es un vector que contiene las temperaturas en los volúmenes de control,
+	[b] es el vector constante al lado derecho de la ecuacion.
+
+Parámetros:
+	- X (float): Tamaño del dominio, en [m].
+	- nCells (int): Número de celdas.
+	- Δt (float): tamaño de paso de tiempo, en [s].
+	- n_Δt (int): número de pasos de tiempo a efectuar en el cálculo.
+	- Told (Vector, float): perfil de temperatura inicial, de tamaño nCells, en [K].
+	- λ (float): conductividad térmica, en [W.m-1.K-1].
+	- ρ (float): densidad, en [kg.m-3].
+	- c (float): capacidad calorífica, en [J.kg-1.K-1].
+	- htc (float): coeficiente de transferencia de calor por convección, en [W.m-2.K-1]
+	- TfarW (float): temperatura "lejos" en la frontera izquierda, en [K].
+	- TfarE (float): temperatura "lejos" en la frontera derecha, en [K].
+	- niters (int): número máximo de iteraciones.
+	- tol (float): tolerancia de convergencia del método numérico.
+
+Regresa:
+	- Tnew (vector, float): perfil de temperatura en régimen estacionario, de tamaño nCells, en [K].
+	- error (vector, float): error de convergencia, de tamaño del número de pasos de tiempo.
+	- bilan (vector, float): balance de energía al lograr convergencia en cada paso de tiempo.
+
 """
 function heatTransient(X, nCells, Δt, n_Δt, Told, λ, ρ, c, htc, TfarW, TfarE, niters, tol=1e-15)
 
@@ -70,9 +100,18 @@ end
 
 
 """
+Sc_()
+
 Función para calcular la parte constante, Sc, 
 de la ecuación de un término fuente linealizado, 
 de la forma: S = Sc + Sp * T
+
+Parámetros:
+	- T (float): valor de T* 
+
+Regresa:
+	- Sc (float): valor de Sc
+
 """
 function Sc_(T)
 	return 0.0
@@ -80,9 +119,18 @@ end
 
 
 """
+Sp_()
+
 Función para calcular la pendiente, Sp, 
 de la ecuación de un término fuente linealizado, 
 de la forma: S = Sc + Sp * T
+
+Parámetros:
+	- T (float): valor de T* 
+
+Regresa:
+	- Sp (float): valor de Sp
+
 """
 function Sp_(T)
 	return 0.0
@@ -90,8 +138,23 @@ end
 
 
 """
+constructLHS_trans()
+
 Construcción de la matriz de coeficientes [A], al lado izquierdo 
 del sistema de ecuaciones para régimen transitorio.
+
+Parámetros
+	- X (float): Tamaño del dominio, en [m].
+	- nCells (int): Número de celdas.
+	- Tstar (Vector, float): perfil de temperaturas iteradas, de tamaño nCells, en [K].
+	- Δt (float): paso de tiempo, en [s].
+	- λ (float): conductividad térmica, en [W.m-1.K-1].
+	- ρ (float): densidad, en [kg.m-3].
+	- c (float): capacidad calorífica, en [J.kg-1.K-1].
+	- htc (float): coeficiente de transferencia de calor por convección, en [W.m-2.K-1]
+
+Regresa:
+	- Tridiagonal(float): matriz tridiagonal con coeficientes del sistema de ecuaciones.
 """
 function constructLHS_trans(X, nCells, Tstar, Δt, λ, ρ, c, htc)
 
@@ -128,7 +191,26 @@ end
 
 
 """
-Construcción del vector constante [b], al lado derecho del sistema de ecuaciones en régimen transitorio.
+constructRHS_trans()
+
+Construcción del vector constante [b], al lado derecho 
+del sistema de ecuaciones en régimen estacionario.
+
+Parámetros
+	- X (float): Tamaño del dominio, en [m].
+	- nCells (int): Número de celdas.
+	- Told (Vector, float): perfil de temperatura inicial, de tamaño nCells, en [K].
+	- Tstar (Vector, float): perfil de temperaturas iteradas, de tamaño nCells, en [K].
+	- Δt: paso de tiempo, en [s].
+	- λ (float): conductividad térmica, en [W.m-1.K-1].
+	- ρ (float): densidad, en [kg.m-3].
+	- c (float): capacidad calorífica, en [J.kg-1.K-1].
+	- htc (float): coeficiente de transferencia de calor por convección, en [W.m-2.K-1]
+	- Tw (float): temperatura "lejos" en la frontera izquierda, en [K].
+	- Te (float): temperatura "lejos" en la frontera derecha, en [K].
+
+Regresa:
+	- Vector(float): vector con coeficientes del sistema de ecuaciones.
 """
 function constructRHS_trans(X, nCells, Told, Tstar, Δt, λ, ρ, c, htc, Tw, Te)
 
@@ -156,9 +238,22 @@ end
 
 
 """
+tempBound()
+
 Calculo de la temperatura en la frontera para una 
 condición a la frontera tipo Cauchy, 
 mediante un método de resistencias térmicas equivalentes.
+
+Parámetros
+	- X (float): Tamaño del dominio, en [m].
+	- nCells (int): Número de celdas.
+	- λ (float): conductividad térmica, en [W.m-1.K-1].
+	- htc (float): coeficiente de transferencia de calor por convección, en [W.m-2.K-1]
+	- Tinf (float): temperatura "lejos" en la frontera, en [K].
+	- Tcell (float): temperatura en la celda en la frontera, en [K].
+
+Regresa:
+	- (float): temperatura en la frontera, en [K]
 """
 function tempBound(X, nCells, λ, htc, Tinf, Tcell)
 
@@ -174,9 +269,26 @@ end
 
 
 """
+transientHeatBalance()
+
 Balance de energía para el régimen transitorio, en [W]:
 
 	Acumulación = Entradas - Salidas + Generación
+
+Parámetros
+	- X (float): Tamaño del dominio, en [m].
+	- nCells (int): Número de celdas.
+	- Δt: paso de tiempo, en [s].
+	- λ (float): conductividad térmica, en [W.m-1.K-1].
+	- ρ (float): densidad, en [kg.m-3].
+	- c (float): capacidad calorífica, en [J.kg-1.K-1].
+	- Told (vector, float): perfil de temperatura paso de tiempo previo, de tamaño nCells, en [K].
+	- Tnew (vector, float): perfil de temperatura, de tamaño nCells, en [K].
+	- Twest (float): temperatura en la frontera izquierda, en [K].
+	- Teast (float): temperatura en la frontera derecha, en [K].
+
+Regresa:
+	- (float): temperatura en la frontera, en [K]
 """
 function transientHeatBalance(X, nCells, Δt, λ, ρ, c, Told, Tnew, Twest, Teast)
 
@@ -199,7 +311,16 @@ end
 
 
 """
+CtoK()
+
 Conversión de unidades de temperatura de Celcius a Kelvin.
+
+Parámetros
+	- T (float): Temperatura, en [C].
+
+Regresa:
+	- (float): Temperatura, en [K].
+
 """
 function CtoK(T)
 	# convert temperature: Celcius to Kelvin
@@ -208,7 +329,15 @@ end
 
 
 """
+KtoC()
+
 Conversión de unidades de temperatura de Kelvin a Celcius
+
+Parámetros
+	- T (float): Temperatura, en [K].
+
+Regresa:
+	- (float): Temperatura, en [C].
 """
 function KtoC(T)
 	# convert temperature: Kelvin to Celcius
