@@ -1,3 +1,2 @@
 # ignore files with answers to excersices
-*_tareaRes.ipynb
-/07_midTerm/*_midTermSolved.ipynb
+*_Res.ipynb
